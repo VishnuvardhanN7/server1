@@ -95,13 +95,30 @@
   background: white;
   padding: 20px;
   border-radius: 8px;
-  width: 300px;
+  width: 500px; /* Increased width */
+  max-width: 90%; /* Responsive on small screens */
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
 }
 
 .modal-content input {
   width: 100%;
   margin-bottom: 10px;
   padding: 6px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+.help {
+  font-size: 12px;
+  color: gray;
+  margin-bottom: 10px;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 .save-medication {
@@ -119,7 +136,6 @@
   border: none;
   padding: 8px 12px;
   border-radius: 6px;
-  margin-left: 10px;
   cursor: pointer;
 }
 

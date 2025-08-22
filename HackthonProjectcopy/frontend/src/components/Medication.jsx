@@ -44,13 +44,13 @@ export default function MedicationReminder() {
     setForm({ email: "", name: "", morning: "", afternoon: "", evening: "", duration: "" });
     closeModal();
 
-    // ✅ Call backend to schedule reminders
+    // Call backend to schedule reminders
     times.forEach((time) => {
       fetch(`${import.meta.env.VITE_BACKEND_URL || "http://localhost:3000"}/schedule-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tabletName: name, // ✅ matches backend
+          tabletName: name,
           time,
           email,
           duration: parsedDuration,
@@ -166,12 +166,14 @@ export default function MedicationReminder() {
               onChange={handleChange}
             />
 
-            <button className="save-medication" onClick={addMedication}>
-              Add Medication
-            </button>
-            <button className="cancel" onClick={closeModal}>
-              Cancel
-            </button>
+            <div className="modal-buttons">
+              <button className="save-medication" onClick={addMedication}>
+                Add Medication
+              </button>
+              <button className="cancel" onClick={closeModal}>
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
