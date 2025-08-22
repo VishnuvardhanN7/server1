@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import "./MedicationRemainder.css"; // Ensure this file exists in the same folder
+import "./MedicationRemainder.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPills, faPlus, faEnvelope, faClock } from "@fortawesome/free-solid-svg-icons";
 
@@ -44,16 +44,16 @@ export default function MedicationReminder() {
     setForm({ email: "", name: "", morning: "", afternoon: "", evening: "", duration: "" });
     closeModal();
 
-    // Schedule email reminders for each time
+    // ✅ Call backend to schedule reminders
     times.forEach((time) => {
       fetch(`${import.meta.env.VITE_BACKEND_URL || "http://localhost:3000"}/schedule-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          subject: `Medication Reminder: ${name}`,
-          message: `⏰ Reminder: Time to take your ${name}! 💊`,
+          tabletName: name, // ✅ matches backend
           time,
           email,
+          duration: parsedDuration,
         }),
       })
         .then((res) => res.json())

@@ -1,8 +1,7 @@
 // ================== Load environment variables ==================
 import dotenv from "dotenv";
-dotenv.config({ path: "./server2/.env" }); // Ensure server2 uses its own .env file
+dotenv.config(); // automatically loads from .env at project root
 
-// ================== Import dependencies ==================
 import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
@@ -12,8 +11,7 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-// ================== Import User model ==================
-import User from "../models/User.js"; // ✅ Fixed path
+import User from "../models/User.js";
 
 // ================== MongoDB Connection ==================
 mongoose
@@ -30,37 +28,34 @@ app.use(cors());
 
 // ================== Nodemailer Setup ==================
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
+  service: "gmail",
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
 });
 
+// Debug: check env variables (mask password)
+console.log("📧 Email config:", {
+  user: process.env.EMAIL_USER,
+  pass: process.env.EMAIL_PASS ? "****" : "MISSING",
+});
+
 const scheduledEmails = [];
 
 // ================== AUTH ROUTES ==================
-
-// Signup route
 app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
-
     if (!name || !email || !password) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser)
       return res.status(400).json({ error: "Email already registered" });
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Save new user
     const newUser = new User({ name, email, password: hashedPassword });
     await newUser.save();
 
@@ -71,30 +66,22 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-// Login route
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-
     if (!email || !password) {
-      return res
-        .status(400)
-        .json({ error: "Email and password are required" });
+      return res.status(400).json({ error: "Email and password are required" });
     }
 
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ error: "Invalid credentials" });
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
-      return res.status(400).json({ error: "Invalid credentials" });
+    if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET || "secret123",
-      { expiresIn: "1h" }
-    );
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
 
     res.json({ message: "✅ Login successful", token });
   } catch (err) {
@@ -105,43 +92,56 @@ app.post("/login", async (req, res) => {
 
 // ================== EMAIL SCHEDULING ==================
 app.post("/schedule-email", (req, res) => {
-  const { subject, message, time, email } = req.body;
+  const { tabletName, time, email, duration } = req.body;
 
-  if (!subject || !message || !time || !email) {
+  if (!tabletName || !time || !email) {
     return res
       .status(400)
-      .json({ error: "Subject, message, time, and email are required" });
+      .json({ error: "Tablet name, time, and email are required" });
   }
 
   const [hour, minute] = time.split(":");
-
-  // Cron expression for daily email schedule
   const cronExpression = `${minute} ${hour} * * *`;
+
+  let daysLeft = duration || 1;
 
   const job = cron.schedule(
     cronExpression,
     () => {
+      if (daysLeft <= 0) {
+        job.stop();
+        return;
+      }
+
       const mailOptions = {
         from: process.env.EMAIL_USER,
         to: email,
-        subject,
-        text: message,
+        subject: `💊 Tablet Reminder: ${tabletName}`,
+        text: `Hello!\n\nThis is a reminder to take your tablet: ${tabletName}.\nScheduled Time: ${time}\n\nStay healthy!\n\n- Your Med Reminder App`,
       };
 
       transporter.sendMail(mailOptions, (err, info) => {
         if (err) {
           console.error("❌ Email error:", err);
         } else {
-          console.log(`📧 Email sent to ${email}:`, info.response);
+          console.log(`📧 Reminder email sent to ${email}:`, info.response);
         }
       });
+
+      daysLeft--;
     },
     { scheduled: true, timezone: "Asia/Kolkata" }
   );
 
   scheduledEmails.push(job);
 
-  res.json({ success: true, scheduledFor: time, to: email });
+  res.json({
+    success: true,
+    scheduledFor: time,
+    to: email,
+    tablet: tabletName,
+    duration,
+  });
 });
 
 // ================== SERVER START ==================
@@ -149,3 +149,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Server2 running on http://localhost:${PORT}`);
 });
+
